@@ -9,8 +9,8 @@ from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped
 
 WHEEL_RADIUS = 0.0318  # In meter
 
-FORWARD_SPEED = 0.5
-BACKWARD_SPEED = -0.5
+FORWARD_SPEED = 0.3
+BACKWARD_SPEED = -0.3
 TARGET_DISTANCE = 1.25
 
 
@@ -71,7 +71,7 @@ class StraightLineNode(DTROS):
         init_left = self.ticks_left
         init_right = self.ticks_right
 
-        rate = rospy.Rate(10)  # 10 Hz command update rate
+        rate = rospy.Rate(500)  # 10 Hz command update rate
 
         while not rospy.is_shutdown():
             # Compute the absolute tick differences since starting this move.
@@ -87,10 +87,10 @@ class StraightLineNode(DTROS):
             # Average the two distances.
             traveled = (distance_left + distance_right) / 2.0
 
-            rospy.loginfo(f"Traveled distance: {traveled:.2f} m")
+            rospy.loginfo(f"Traveled distance: {traveled:.4f} m")
 
             # Check if we have reached (or exceeded) the target distance.
-            if traveled >= target_distance:
+            if abs(traveled - target_distance) <= 0.01:
                 rospy.loginfo("Target distance reached.")
                 break
 
@@ -109,7 +109,7 @@ class StraightLineNode(DTROS):
         rospy.sleep(1.0)
 
     def run(self):
-        rate = rospy.Rate(10)  # 10 Hz
+        rate = rospy.Rate(500)  # 10 Hz
 
         # Wait until encoder data is available.
         rospy.loginfo("Waiting for encoder messages...")
@@ -143,4 +143,4 @@ if __name__ == "__main__":
     # run node
     node.run()
     # keep the process from terminating
-    rospy.spin()
+    # rospy.spin()
