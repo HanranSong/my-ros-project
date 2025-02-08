@@ -6,7 +6,7 @@ source /environment.sh
 dt-launchfile-init
 
 # launch subscriber
-rosrun part_2 rotation_node.py
+rosrun part_2 part_2_3_node.py
 
 # wait for app to end
 dt-launchfile-join
