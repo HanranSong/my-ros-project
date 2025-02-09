@@ -48,7 +48,7 @@ class Motions:
             rospy.loginfo_once(f"Right encoder resolution: {self.res_right}")
 
     def wait_for_encoders(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         rospy.loginfo("Waiting for encoder messages...")
         while (
             self.ticks_left is None or self.ticks_right is None
@@ -65,7 +65,7 @@ class Motions:
     def move_straight(self, target_distance, speed):
         init_left = self.ticks_left
         init_right = self.ticks_right
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
 
         # Determine compensation only when reversing.
         if speed < 0:
@@ -110,7 +110,7 @@ class Motions:
     def rotate_robot(self, target_angle, speed):
         init_left = self.ticks_left
         init_right = self.ticks_right
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         direction = 1 if target_angle >= 0 else -1
         cmd_vel_left = -direction * speed
         cmd_vel_right = direction * speed

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import rosbag
 import matplotlib.pyplot as plt
 import math
@@ -6,10 +7,8 @@ import sys
 
 
 def main():
-    # Set the bag file path; pass filename as an argument if desired.
-    bag_file = "./packages/part_2/src/2025-02-09-02-00-28.bag"
-    if len(sys.argv) > 1:
-        bag_file = sys.argv[1]
+    # bag_file = "./packages/part_2/src/straight.bag"
+    bag_file = "./packages/part_2/src/rotation.bag"
 
     # Differential drive parameters (same as your motion code)
     WHEEL_RADIUS = 0.0318  # meters
@@ -42,20 +41,11 @@ def main():
     xs = [x]
     ys = [y]
 
-    # Option 1: Using timestamps to compute dt (more robust)
-    use_constant_dt = False  # Change to True to use constant dt=0.1 s
-
-    # If using constant dt, set:
-    dt_constant = 0.1  # seconds (10 Hz)
-
     for i in range(1, n):
-        if use_constant_dt:
-            dt = dt_constant
-        else:
-            # Compute dt from the left encoder timestamps (or average left/right if desired)
-            t_prev, _, _ = left_msgs[i - 1]
-            t_curr, _, _ = left_msgs[i]
-            dt = t_curr - t_prev
+        # Compute dt from the left encoder timestamps (or average left/right if desired)
+        t_prev, _, _ = left_msgs[i - 1]
+        t_curr, _, _ = left_msgs[i]
+        dt = t_curr - t_prev
 
         # Compute left wheel displacement:
         t_left_prev, tick_left_prev, res_left = left_msgs[i - 1]
@@ -75,15 +65,13 @@ def main():
         v = (v_left + v_right) / 2.0
         omega = (v_right - v_left) / WHEEL_BASE
 
-        # Update pose with Euler integration
-        x += v * math.cos(theta) * dt
-        y += v * math.sin(theta) * dt
+        x += v * math.cos(theta + (omega * dt / 2.0)) * dt
+        y += v * math.sin(theta + (omega * dt / 2.0)) * dt
         theta += omega * dt
 
         xs.append(x)
         ys.append(y)
 
-    print(f"Processed {n} encoder pairs.")
     print(f"Final computed pose: x = {x:.3f} m, y = {y:.3f} m, theta = {theta:.3f} rad")
 
     # Plot the computed trajectory
@@ -91,7 +79,8 @@ def main():
     plt.plot(xs, ys, marker="o", linestyle="-", label="Trajectory")
     plt.xlabel("x (meters)")
     plt.ylabel("y (meters)")
-    plt.title("Duckiebot Trajectory from Encoder Data")
+    # plt.title("Straight")
+    plt.title("Rotation")
     plt.axis("equal")
     plt.grid(True)
     plt.legend()

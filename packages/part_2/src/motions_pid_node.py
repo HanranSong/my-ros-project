@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import math
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped
@@ -22,7 +23,6 @@ class PIDController:
         return (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
 
     def reset(self):
-        """Reset the PID controller state."""
         self.prev_error = 0.0
         self.integral = 0.0
 
@@ -58,7 +58,7 @@ class Motions:
         # PID Controllers.
         # For straight driving: Using tuning values derived from Ku and Pu.
         self.pid_straight = PIDController(Kp=2, Ki=0, Kd=0)  # 1.75, 8
-        self.pid_rotation = PIDController(Kp=1, Ki=0, Kd=0.3)  # Tune as needed.
+        self.pid_rotation = PIDController(Kp=1, Ki=0, Kd=0)  # Tune as needed.
 
     def callback_left(self, msg):
         self.ticks_left = msg.data
@@ -73,7 +73,7 @@ class Motions:
             rospy.loginfo_once(f"Right encoder resolution: {self.res_right}")
 
     def wait_for_encoders(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         rospy.loginfo("Waiting for encoder messages...")
         while (
             self.ticks_left is None or self.ticks_right is None
@@ -88,10 +88,6 @@ class Motions:
         self.pub.publish(stop_msg)
 
     def move_straight(self, target_distance, speed):
-        """
-        Drives the robot in a straight line using PID to correct lateral errors.
-        When driving backward (speed < 0), the PID correction is inverted.
-        """
         self.wait_for_encoders()
 
         # Reset the PID controller state before starting a new motion.
@@ -107,7 +103,7 @@ class Motions:
         # Pose variables (we are mainly interested in lateral error, y).
         x, y, theta = 0.0, 0.0, 0.0
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         last_time = rospy.Time.now()
         cumulative_distance = 0.0
 
@@ -180,10 +176,6 @@ class Motions:
         rospy.sleep(1.0)
 
     def rotate_robot(self, target_angle, speed):
-        """
-        Rotates the robot by a target angle (in radians) using PID control.
-        Positive target_angle rotates counterclockwise.
-        """
         self.wait_for_encoders()
 
         # Optionally reset rotation PID here if needed:
@@ -197,7 +189,7 @@ class Motions:
         prev_distance_right = 0.0
 
         current_angle = 0.0  # Integrated rotation angle.
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         last_time = rospy.Time.now()
 
         # Determine rotation direction.

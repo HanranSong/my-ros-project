@@ -22,10 +22,10 @@ class CompositeMotionNode(DTROS):
         self.controller.wait_for_encoders()
 
         rospy.loginfo("Rotating -90 degrees (π/2 rad) ...")
-        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.4)
+        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.3)
 
         rospy.loginfo("Rotating 90 degrees (π/2 rad) ...")
-        self.controller.rotate_robot(target_angle=math.pi / 2, speed=0.4)
+        self.controller.rotate_robot(target_angle=math.pi / 2, speed=0.175)
 
         rospy.loginfo("Composite motion sequence complete.")
         # rospy.spin()
