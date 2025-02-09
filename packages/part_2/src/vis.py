@@ -7,7 +7,7 @@ import sys
 
 def main():
     # Set the bag file path; pass filename as an argument if desired.
-    bag_file = "./packages/part_2/src/2025-02-08-00-25-46.bag"
+    bag_file = "./packages/part_2/src/2025-02-09-02-00-28.bag"
     if len(sys.argv) > 1:
         bag_file = sys.argv[1]
 
