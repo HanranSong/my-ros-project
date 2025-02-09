@@ -48,7 +48,7 @@ class Motions:
             rospy.loginfo_once(f"Right encoder resolution: {self.res_right}")
 
     def wait_for_encoders(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         rospy.loginfo("Waiting for encoder messages...")
         while (
             self.ticks_left is None or self.ticks_right is None
@@ -65,14 +65,24 @@ class Motions:
     def move_straight(self, target_distance, speed):
         init_left = self.ticks_left
         init_right = self.ticks_right
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
+
+        # Determine compensation only when reversing.
+        if speed < 0:
+            # This value may require tuning.
+            compensation = 0.02
+            # Since speed is negative, adding a positive offset will reduce the magnitude.
+            vel_left = speed
+            vel_right = speed + compensation
+        else:
+            vel_left = speed
+            vel_right = speed
 
         while not rospy.is_shutdown():
-            # Compute the absolute tick differences.
+            # Compute the encoder differences.
             delta_left = abs(self.ticks_left - init_left)
             delta_right = abs(self.ticks_right - init_right)
 
-            # Calculate distance traveled by each wheel.
             distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
                 delta_left / self.res_left
             )
@@ -82,15 +92,15 @@ class Motions:
             traveled = (distance_left + distance_right) / 2.0
 
             rospy.loginfo("Traveled distance: {:.4f} m".format(traveled))
-
             if traveled >= abs(target_distance):
                 rospy.loginfo("Target distance reached.")
                 break
 
+            # Publish the compensated speeds.
             cmd_msg = WheelsCmdStamped()
             cmd_msg.header.stamp = rospy.Time.now()
-            cmd_msg.vel_left = speed
-            cmd_msg.vel_right = speed
+            cmd_msg.vel_left = vel_left
+            cmd_msg.vel_right = vel_right
             self.pub.publish(cmd_msg)
             rate.sleep()
 
@@ -100,7 +110,7 @@ class Motions:
     def rotate_robot(self, target_angle, speed):
         init_left = self.ticks_left
         init_right = self.ticks_right
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         direction = 1 if target_angle >= 0 else -1
         cmd_vel_left = -direction * speed
         cmd_vel_right = direction * speed
