@@ -6,7 +6,7 @@ source /environment.sh
 dt-launchfile-init
 
 # launch subscriber
-rosrun part_1 camera_processor_node.py
+rosrun camera_package camera_processor_node.py
 
 # wait for app to end
 dt-launchfile-join
