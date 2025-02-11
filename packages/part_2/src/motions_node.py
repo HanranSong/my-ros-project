@@ -144,3 +144,72 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
+
+    def drive_curve(self, radius, velocity, angle_span):
+        self.wait_for_encoders()
+
+        # Calculate wheel speeds based on differential-drive kinematics.
+        # For a clockwise curve, the robot's center of curvature is to its right.
+        # The left (outer) wheel must move faster than the right (inner) wheel.
+        vel_left = velocity * (radius + self.WHEEL_BASE / 2.0) / radius
+        vel_right = velocity * (radius - self.WHEEL_BASE / 2.0) / radius
+
+        # For clockwise turning, the integrated rotation will be negative.
+        target_angle = -abs(angle_span)
+
+        init_left = self.ticks_left
+        init_right = self.ticks_right
+
+        # Initialize previous cumulative distances.
+        prev_distance_left = 0.0
+        prev_distance_right = 0.0
+
+        cumulative_angle = 0.0  # Integrated rotation angle.
+        rate = rospy.Rate(30)
+
+        while not rospy.is_shutdown():
+            # Compute cumulative distances for each wheel.
+            delta_left_ticks = self.ticks_left - init_left
+            delta_right_ticks = self.ticks_right - init_right
+
+            current_distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
+                delta_left_ticks / self.res_left
+            )
+            current_distance_right = (2 * math.pi * self.WHEEL_RADIUS) * (
+                delta_right_ticks / self.res_right
+            )
+
+            # Compute incremental distances.
+            d_left = current_distance_left - prev_distance_left
+            d_right = current_distance_right - prev_distance_right
+
+            # Update previous distances.
+            prev_distance_left = current_distance_left
+            prev_distance_right = current_distance_right
+
+            # Compute incremental rotation (d_theta).
+            # For a differential drive, d_theta = (d_right - d_left) / WHEEL_BASE.
+            d_theta = (d_right - d_left) / self.WHEEL_BASE
+            cumulative_angle += d_theta
+
+            rospy.loginfo(
+                "Cumulative angle: {:.3f} rad, Target: {:.3f} rad".format(
+                    cumulative_angle, target_angle
+                )
+            )
+
+            # Publish the wheel commands.
+            cmd_msg = WheelsCmdStamped()
+            cmd_msg.header.stamp = rospy.Time.now()
+            cmd_msg.vel_left = vel_left
+            cmd_msg.vel_right = vel_right
+            self.pub.publish(cmd_msg)
+
+            if abs(cumulative_angle) >= abs(target_angle):
+                rospy.loginfo("Curve target reached.")
+                break
+
+            rate.sleep()
+
+        self.stop_robot()
+        rospy.sleep(1.0)
