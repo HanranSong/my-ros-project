@@ -23,24 +23,32 @@ class CompositeMotionNode(DTROS):
         # Wait for encoder messages before starting any motion.
         self.controller.wait_for_encoders()
 
+        rospy.loginfo("Driving straight...")
         self.controller.move_straight(target_distance=0.9 * 1.2, speed=0.35)
 
+        rospy.loginfo("Rotating...")
         self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.4)
 
+        rospy.loginfo("Driving straight...")
         self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
+        rospy.loginfo("Driving curve...")
         self.controller.drive_curve(
             radius=0.08, velocity=0.4, angle_span=0.9 * np.pi / 2
         )
 
+        rospy.loginfo("Driving straight...")
         self.controller.move_straight(target_distance=1 * 0.61, speed=0.35)
 
+        rospy.loginfo("Driving curve...")
         self.controller.drive_curve(
             radius=0.08, velocity=0.4, angle_span=0.8 * np.pi / 2
         )
 
+        rospy.loginfo("Driving straight...")
         self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
+        rospy.loginfo("Rotating...")
         self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.4)
 
         rospy.loginfo("Composite motion sequence complete.")
