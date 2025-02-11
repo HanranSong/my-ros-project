@@ -37,9 +37,10 @@ class Motions:
         self.encoder_right_topic = f"/{vehicle_name}/right_wheel_encoder_node/tick"
 
         # LED topic: use a ROS parameter. The default here is set to the LED driver node’s topic.
-        self.led_topic = rospy.get_param(
-            "~led_topic", f"/{vehicle_name}/led_driver_node/led_pattern"
-        )
+        # self.led_topic = rospy.get_param(
+        #     "~led_topic", f"/{vehicle_name}/led_driver_node/led_pattern"
+        # )
+        self.led_topic = f"/{vehicle_name}/led_emitter_node/led_pattern"
         self.led_pub = rospy.Publisher(self.led_topic, LEDPattern, queue_size=1)
 
         # Publisher for wheel commands.
@@ -71,6 +72,7 @@ class Motions:
             "off": [0, 0, 0],
             "green": [0, 1, 0],
             "blue": [0, 0, 1],
+            "red": [1, 0, 0],
         }
 
     def callback_left(self, msg):
@@ -133,7 +135,7 @@ class Motions:
         self.pid_straight.reset()
 
         # Indicate drive-straight status via LED (green).
-        self.set_led_status("green")
+        self.set_led_status("red")
 
         init_left = self.ticks_left
         init_right = self.ticks_right

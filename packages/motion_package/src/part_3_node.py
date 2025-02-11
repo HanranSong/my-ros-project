@@ -25,23 +25,23 @@ class CompositeMotionNode(DTROS):
 
         self.controller.move_straight(target_distance=0.9 * 1.2, speed=0.35)
 
-        self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.4)
+        self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.375)
 
         self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
         self.controller.drive_curve(
-            radius=0.08, velocity=0.4, angle_span=0.9 * np.pi / 2
+            radius=0.09, velocity=0.4, angle_span=0.9 * np.pi / 2
         )
 
-        self.controller.move_straight(target_distance=1 * 0.61, speed=0.35)
+        self.controller.move_straight(target_distance=0.9 * 0.61, speed=0.35)
 
         self.controller.drive_curve(
-            radius=0.08, velocity=0.4, angle_span=0.8 * np.pi / 2
+            radius=0.09, velocity=0.4, angle_span=0.9 * np.pi / 2
         )
 
         self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
-        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.4)
+        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.375)
 
         rospy.loginfo("Composite motion sequence complete.")
         # rospy.spin()
