@@ -1,21 +1,23 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>part_2</name>
+  <name>led_controller</name>
   <version>0.0.1</version>
-  <description>My part 2 package in exercise 2.</description>
+  <description>My part 3 package in exercise 2.</description>
   <maintainer email="hanransong@gmail.com">Hanran Song</maintainer>
   <license>None</license>
 
+  <!-- Build tool dependency -->
   <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Core ROS dependencies -->
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>led_controller</build_depend>
-
-  <exec_depend>rospy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>led_controller</exec_depend>
-
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>led_controller</build_export_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <!-- Dependencies for service message generation -->
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  
 </package>

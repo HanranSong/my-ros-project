@@ -1,0 +1,7 @@
+# Request
+string color
+
+---
+# Response
+bool success
+string message
