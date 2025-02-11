@@ -6,7 +6,6 @@ from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped, LEDPatter
 from std_msgs.msg import ColorRGBA
 
 
-# https://en.wikipedia.org/wiki/Proportional%E2%80%93integral%E2%80%93derivative_controller
 class PIDController:
     def __init__(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -16,16 +15,14 @@ class PIDController:
         self.integral = 0.0
 
     def compute(self, error, dt):
-        # https://medium.com/@aleksej.gudkov/python-pid-controller-example-a-complete-guide-5f35589eec86
-        if dt <= 0:  # Avoid divide by 0
-            dt = 1e-6
+        if dt <= 0:
+            dt = 1e-3
         self.integral += error * dt
         derivative = (error - self.prev_error) / dt
         self.prev_error = error
         return (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
 
     def reset(self):
-        # Make sure the error won' build up between different actions
         self.prev_error = 0.0
         self.integral = 0.0
 
@@ -43,9 +40,7 @@ class Motions:
         self.led_topic = rospy.get_param(
             "~led_topic", f"/{vehicle_name}/led_driver_node/led_pattern"
         )
-        self.led_pub = rospy.Publisher(
-            self.led_topic, LEDPattern, queue_size=1
-        )  # Make sure data don't pill up
+        self.led_pub = rospy.Publisher(self.led_topic, LEDPattern, queue_size=1)
 
         # Publisher for wheel commands.
         self.pub = rospy.Publisher(self.wheels_topic, WheelsCmdStamped, queue_size=1)
@@ -58,31 +53,24 @@ class Motions:
             self.encoder_right_topic, WheelEncoderStamped, self.callback_right
         )
 
-        # tick: one pulse from encoder
-        # resolution: ticks per revolution
+        # Encoder values and resolutions.
         self.ticks_left = None
         self.ticks_right = None
         self.res_left = None
         self.res_right = None
 
-        # Wheel parameters
-        self.WHEEL_RADIUS = 0.0318  # m
-        self.WHEEL_BASE = 0.1  # m
+        # Wheel parameters.
+        self.WHEEL_RADIUS = 0.0318  # meters
+        self.WHEEL_BASE = 0.1  # meters
 
-        # PID controller for straight line driving
-        # Only use P value
-        # The PID controller doen't work well with rotation and curve
+        # PID controller for drive-straight (lateral correction).
         self.pid_straight = PIDController(Kp=1.0, Ki=0.0, Kd=0.0)
 
-        # LED colors
+        # Define a simple color dictionary.
         self.colors = {
             "off": [0, 0, 0],
-            "red": [1, 0, 0],
             "green": [0, 1, 0],
             "blue": [0, 0, 1],
-            "cyan": [0, 1, 1],
-            "magenta": [1, 0, 1],
-            "yellow": [1, 1, 0],
         }
 
     def callback_left(self, msg):
@@ -98,9 +86,8 @@ class Motions:
             rospy.loginfo_once(f"Right encoder resolution: {self.res_right}")
 
     def wait_for_encoders(self):
-        # Make sure encoder is initialized
         rate = rospy.Rate(30)
-        rospy.loginfo("Waiting for encoder...")
+        rospy.loginfo("Waiting for encoder messages...")
         while (
             self.ticks_left is None or self.ticks_right is None
         ) and not rospy.is_shutdown():
@@ -109,26 +96,27 @@ class Motions:
     def stop_robot(self):
         stop_msg = WheelsCmdStamped()
         stop_msg.header.stamp = rospy.Time.now()
-        # stop two wheels by setting speed to zero
         stop_msg.vel_left = 0.0
         stop_msg.vel_right = 0.0
         self.pub.publish(stop_msg)
 
     def set_led_status(self, color):
+        """
+        Publish an LEDPattern message to indicate the current status.
+        Accepted colors: 'green', 'blue', or 'off'.
+        """
         color = color.lower()
-
-        # get rgb value
+        if color not in self.colors:
+            color = "off"
         rgb = self.colors[color]
 
         pattern_msg = LEDPattern()
         pattern_msg.header.stamp = rospy.Time.now()
-
         # Set the pattern for all 5 LED positions.
         pattern_msg.color_list = [color] * 5
         pattern_msg.color_mask = [1, 1, 1, 1, 1]
         pattern_msg.frequency = 0.0  # static pattern
         pattern_msg.frequency_mask = [0, 0, 0, 0, 0]
-
         # Fill in the rgb_vals with five ColorRGBA messages.
         pattern_msg.rgb_vals = [
             ColorRGBA(rgb[0], rgb[1], rgb[2], 1.0) for _ in range(5)
@@ -137,18 +125,16 @@ class Motions:
         self.led_pub.publish(pattern_msg)
         rospy.loginfo(f"Published LED pattern: {color}")
 
+    #######################################################################
+    # Drive Straight (using PID for lateral correction); LED = green.
+    #######################################################################
     def move_straight(self, target_distance, speed):
-        """
-        Drive Straight
-        LED = red
-        """
         self.wait_for_encoders()
         self.pid_straight.reset()
 
-        # Set LED
-        self.set_led_status("red")
+        # Indicate drive-straight status via LED (green).
+        self.set_led_status("green")
 
-        # Initialize value
         init_left = self.ticks_left
         init_right = self.ticks_right
         prev_distance_left = 0.0
@@ -161,14 +147,13 @@ class Motions:
 
         while not rospy.is_shutdown():
             current_time = rospy.Time.now()
-            dt = (current_time - last_time).to_sec()  # time difference
+            dt = (current_time - last_time).to_sec()
             last_time = current_time
 
-            # tick differences
+            # Compute tick differences.
             delta_left_ticks = self.ticks_left - init_left
             delta_right_ticks = self.ticks_right - init_right
 
-            # current_dist = circumference * (delta_tick / res)
             current_distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
                 delta_left_ticks / self.res_left
             )
@@ -176,34 +161,30 @@ class Motions:
                 delta_right_ticks / self.res_right
             )
 
-            # delt_dist
             d_left = current_distance_left - prev_distance_left
             d_right = current_distance_right - prev_distance_right
 
             prev_distance_left = current_distance_left
             prev_distance_right = current_distance_right
 
-            # delta_center & delta theta
             d_center = (d_left + d_right) / 2.0
             d_theta = (d_right - d_left) / self.WHEEL_BASE
 
-            # update x, y, theta
             x += d_center * math.cos(theta)
             y += d_center * math.sin(theta)
             theta += d_theta
 
-            # total traveled dist
             cumulative_distance += abs(d_center)
 
-            # add pid control
+            # Lateral error (desired y = 0).
             error_y = 0.0 - y
             correction = self.pid_straight.compute(error_y, dt)
-            if speed < 0:  # correct correction direction for reverse
+            if speed < 0:
                 correction = -correction
 
             cmd_msg = WheelsCmdStamped()
             cmd_msg.header.stamp = rospy.Time.now()
-            cmd_msg.vel_left = speed - correction  # apply correction
+            cmd_msg.vel_left = speed - correction
             cmd_msg.vel_right = speed + correction
             self.pub.publish(cmd_msg)
 
@@ -219,21 +200,15 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
-
-        # turn off LED
         self.set_led_status("off")
 
+    #######################################################################
+    # Rotate Robot (open-loop); LED = blue.
+    #######################################################################
     def rotate_robot(self, target_angle, speed):
-        """
-        Rotation
-        LED: green
-        """
         self.wait_for_encoders()
+        self.set_led_status("blue")
 
-        # LED
-        self.set_led_status("green")
-
-        # Initialization
         init_left = self.ticks_left
         init_right = self.ticks_right
         rate = rospy.Rate(30)
@@ -242,23 +217,17 @@ class Motions:
         cmd_vel_right = direction * speed
 
         while not rospy.is_shutdown():
-            # tick differences
             delta_left = abs(self.ticks_left - init_left)
             delta_right = abs(self.ticks_right - init_right)
-
-            # dist per tick
             dist_per_tick_left = (2 * math.pi * self.WHEEL_RADIUS) / self.res_left
             dist_per_tick_right = (2 * math.pi * self.WHEEL_RADIUS) / self.res_right
 
-            # perform the rotation
             distance_left = (
                 delta_left * dist_per_tick_left * (1 if cmd_vel_left >= 0 else -1)
             )
             distance_right = (
                 delta_right * dist_per_tick_right * (1 if cmd_vel_right >= 0 else -1)
             )
-
-            # rotation angle
             theta_rot = (distance_right - distance_left) / self.WHEEL_BASE
 
             rospy.loginfo("Rotated angle: {:.4f} rad".format(theta_rot))
@@ -276,19 +245,14 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
-
-        # turn off LED
         self.set_led_status("off")
 
+    #######################################################################
+    # Drive Curve (open-loop); LED = green.
+    #######################################################################
     def drive_curve(self, radius, velocity, angle_span):
-        """
-        Drive curve
-        LED: blue
-        """
         self.wait_for_encoders()
-
-        # LED
-        self.set_led_status("blue")
+        self.set_led_status("green")
 
         vel_left = velocity * (radius + self.WHEEL_BASE / 2.0) / radius
         vel_right = velocity * (radius - self.WHEEL_BASE / 2.0) / radius
@@ -303,11 +267,9 @@ class Motions:
         rate = rospy.Rate(30)
 
         while not rospy.is_shutdown():
-            # tick differences
             delta_left_ticks = self.ticks_left - init_left
             delta_right_ticks = self.ticks_right - init_right
 
-            # current_dist = circumference * (delta_tick / res)
             current_distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
                 delta_left_ticks / self.res_left
             )
@@ -315,17 +277,13 @@ class Motions:
                 delta_right_ticks / self.res_right
             )
 
-            # delt_dist
             d_left = current_distance_left - prev_distance_left
             d_right = current_distance_right - prev_distance_right
 
             prev_distance_left = current_distance_left
             prev_distance_right = current_distance_right
 
-            # get current angle
             d_theta = (d_right - d_left) / self.WHEEL_BASE
-
-            # update angle
             cumulative_angle += d_theta
 
             rospy.loginfo(
@@ -348,20 +306,4 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
-
-        # turn off LED
-        self.set_led_status("off")
-
-    def stay_still(self, stop_seconds):
-        # Stop
-        self.stop_robot()
-        rospy.loginfo(f"Robot will remain stationary for {stop_seconds} seconds.")
-
-        # LED
-        self.set_led_status("cyan")
-
-        # Sleep
-        rospy.sleep(stop_seconds)
-
-        # turn off LED
         self.set_led_status("off")
