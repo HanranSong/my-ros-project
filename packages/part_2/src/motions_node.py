@@ -2,14 +2,35 @@
 
 import math
 import rospy
-from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped
+from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped, LEDPattern
+
+
+class PIDController:
+    def __init__(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.prev_error = 0.0
+        self.integral = 0.0
+
+    def compute(self, error, dt):
+        if dt <= 0:
+            dt = 1e-3
+        self.integral += error * dt
+        derivative = (error - self.prev_error) / dt
+        self.prev_error = error
+        return (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
+
+    def reset(self):
+        self.prev_error = 0.0
+        self.integral = 0.0
 
 
 class Motions:
     def __init__(self, vehicle_name):
         self.vehicle_name = vehicle_name
 
-        # Define topics.
+        # Topics for wheel commands and encoders.
         self.wheels_topic = f"/{vehicle_name}/wheels_driver_node/wheels_cmd"
         self.encoder_left_topic = f"/{vehicle_name}/left_wheel_encoder_node/tick"
         self.encoder_right_topic = f"/{vehicle_name}/right_wheel_encoder_node/tick"
@@ -17,13 +38,7 @@ class Motions:
         # Publisher for wheel commands.
         self.pub = rospy.Publisher(self.wheels_topic, WheelsCmdStamped, queue_size=1)
 
-        # Variables to store encoder ticks and resolution.
-        self.ticks_left = None
-        self.ticks_right = None
-        self.res_left = None
-        self.res_right = None
-
-        # Subscribers for wheel encoder messages.
+        # Subscribers for wheel encoder ticks.
         self.sub_left = rospy.Subscriber(
             self.encoder_left_topic, WheelEncoderStamped, self.callback_left
         )
@@ -31,9 +46,18 @@ class Motions:
             self.encoder_right_topic, WheelEncoderStamped, self.callback_right
         )
 
+        # Encoder values and resolutions.
+        self.ticks_left = None
+        self.ticks_right = None
+        self.res_left = None
+        self.res_right = None
+
         # Wheel parameters.
         self.WHEEL_RADIUS = 0.0318  # meters
         self.WHEEL_BASE = 0.1  # meters
+
+        # PID controller for drive-straight (lateral correction).
+        self.pid_straight = PIDController(Kp=1.0, Ki=0.0, Kd=0.0)
 
     def callback_left(self, msg):
         self.ticks_left = msg.data
@@ -62,52 +86,85 @@ class Motions:
         stop_msg.vel_right = 0.0
         self.pub.publish(stop_msg)
 
+    #######################################################################
+    # Drive Straight (using PID for lateral correction); LED = green.
+    #######################################################################
     def move_straight(self, target_distance, speed):
+        self.wait_for_encoders()
+        self.pid_straight.reset()
+
         init_left = self.ticks_left
         init_right = self.ticks_right
-        rate = rospy.Rate(30)
+        prev_distance_left = 0.0
+        prev_distance_right = 0.0
+        x, y, theta = 0.0, 0.0, 0.0
 
-        # Determine compensation only when reversing.
-        if speed < 0:
-            # This value may require tuning.
-            compensation = 0.02
-            # Since speed is negative, adding a positive offset will reduce the magnitude.
-            vel_left = speed
-            vel_right = speed + compensation
-        else:
-            vel_left = speed
-            vel_right = speed
+        rate = rospy.Rate(30)
+        last_time = rospy.Time.now()
+        cumulative_distance = 0.0
 
         while not rospy.is_shutdown():
-            # Compute the encoder differences.
-            delta_left = abs(self.ticks_left - init_left)
-            delta_right = abs(self.ticks_right - init_right)
+            current_time = rospy.Time.now()
+            dt = (current_time - last_time).to_sec()
+            last_time = current_time
 
-            distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
-                delta_left / self.res_left
-            )
-            distance_right = (2 * math.pi * self.WHEEL_RADIUS) * (
-                delta_right / self.res_right
-            )
-            traveled = (distance_left + distance_right) / 2.0
+            # Compute tick differences.
+            delta_left_ticks = self.ticks_left - init_left
+            delta_right_ticks = self.ticks_right - init_right
 
-            rospy.loginfo("Traveled distance: {:.4f} m".format(traveled))
-            if traveled >= abs(target_distance):
+            current_distance_left = (2 * math.pi * self.WHEEL_RADIUS) * (
+                delta_left_ticks / self.res_left
+            )
+            current_distance_right = (2 * math.pi * self.WHEEL_RADIUS) * (
+                delta_right_ticks / self.res_right
+            )
+
+            d_left = current_distance_left - prev_distance_left
+            d_right = current_distance_right - prev_distance_right
+
+            prev_distance_left = current_distance_left
+            prev_distance_right = current_distance_right
+
+            d_center = (d_left + d_right) / 2.0
+            d_theta = (d_right - d_left) / self.WHEEL_BASE
+
+            x += d_center * math.cos(theta)
+            y += d_center * math.sin(theta)
+            theta += d_theta
+
+            cumulative_distance += abs(d_center)
+
+            # Lateral error (desired y = 0).
+            error_y = 0.0 - y
+            correction = self.pid_straight.compute(error_y, dt)
+            if speed < 0:
+                correction = -correction
+
+            cmd_msg = WheelsCmdStamped()
+            cmd_msg.header.stamp = rospy.Time.now()
+            cmd_msg.vel_left = speed - correction
+            cmd_msg.vel_right = speed + correction
+            self.pub.publish(cmd_msg)
+
+            rospy.loginfo(
+                f"Distance: {cumulative_distance:.3f} m, y: {y:.3f}, error: {error_y:.3f}, correction: {correction:.3f}"
+            )
+
+            if cumulative_distance >= abs(target_distance):
                 rospy.loginfo("Target distance reached.")
                 break
 
-            # Publish the compensated speeds.
-            cmd_msg = WheelsCmdStamped()
-            cmd_msg.header.stamp = rospy.Time.now()
-            cmd_msg.vel_left = vel_left
-            cmd_msg.vel_right = vel_right
-            self.pub.publish(cmd_msg)
             rate.sleep()
 
         self.stop_robot()
         rospy.sleep(1.0)
 
+    #######################################################################
+    # Rotate Robot (open-loop); LED = blue.
+    #######################################################################
     def rotate_robot(self, target_angle, speed):
+        self.wait_for_encoders()
+
         init_left = self.ticks_left
         init_right = self.ticks_right
         rate = rospy.Rate(30)
@@ -127,11 +184,11 @@ class Motions:
             distance_right = (
                 delta_right * dist_per_tick_right * (1 if cmd_vel_right >= 0 else -1)
             )
+            theta_rot = (distance_right - distance_left) / self.WHEEL_BASE
 
-            theta = (distance_right - distance_left) / self.WHEEL_BASE
-            rospy.loginfo("Rotated angle: {:.4f} rad".format(theta))
+            rospy.loginfo("Rotated angle: {:.4f} rad".format(theta_rot))
 
-            if abs(theta) >= abs(target_angle):
+            if abs(theta_rot) >= abs(target_angle):
                 rospy.loginfo("Target rotation reached.")
                 break
 
@@ -144,31 +201,25 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
-
+    #######################################################################
+    # Drive Curve (open-loop); LED = green.
+    #######################################################################
     def drive_curve(self, radius, velocity, angle_span):
         self.wait_for_encoders()
 
-        # Calculate wheel speeds based on differential-drive kinematics.
-        # For a clockwise curve, the robot's center of curvature is to its right.
-        # The left (outer) wheel must move faster than the right (inner) wheel.
         vel_left = velocity * (radius + self.WHEEL_BASE / 2.0) / radius
         vel_right = velocity * (radius - self.WHEEL_BASE / 2.0) / radius
-
-        # For clockwise turning, the integrated rotation will be negative.
         target_angle = -abs(angle_span)
 
         init_left = self.ticks_left
         init_right = self.ticks_right
 
-        # Initialize previous cumulative distances.
         prev_distance_left = 0.0
         prev_distance_right = 0.0
-
-        cumulative_angle = 0.0  # Integrated rotation angle.
+        cumulative_angle = 0.0
         rate = rospy.Rate(30)
 
         while not rospy.is_shutdown():
-            # Compute cumulative distances for each wheel.
             delta_left_ticks = self.ticks_left - init_left
             delta_right_ticks = self.ticks_right - init_right
 
@@ -179,16 +230,12 @@ class Motions:
                 delta_right_ticks / self.res_right
             )
 
-            # Compute incremental distances.
             d_left = current_distance_left - prev_distance_left
             d_right = current_distance_right - prev_distance_right
 
-            # Update previous distances.
             prev_distance_left = current_distance_left
             prev_distance_right = current_distance_right
 
-            # Compute incremental rotation (d_theta).
-            # For a differential drive, d_theta = (d_right - d_left) / WHEEL_BASE.
             d_theta = (d_right - d_left) / self.WHEEL_BASE
             cumulative_angle += d_theta
 
@@ -198,7 +245,6 @@ class Motions:
                 )
             )
 
-            # Publish the wheel commands.
             cmd_msg = WheelsCmdStamped()
             cmd_msg.header.stamp = rospy.Time.now()
             cmd_msg.vel_left = vel_left

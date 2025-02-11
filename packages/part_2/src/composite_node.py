@@ -59,28 +59,25 @@ class CompositeMotionNode(DTROS):
         # --- State 2: Tracing the 'D' Path ---
         rospy.loginfo("[STATE 2] Moving forward 1.2 meters...")
         self.call_led("green")
-        self.controller.move_straight(target_distance=1.2, speed=0.3)
+        self.controller.move_straight(target_distance=0.9 * 1.2, speed=0.35)
 
-        rospy.loginfo("[STATE 2] Rotating -90 degrees...")
-        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.3)
+        self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.4)
 
-        rospy.loginfo("[STATE 2] Moving forward 0.92 meters...")
-        self.controller.move_straight(target_distance=0.92, speed=0.3)
+        self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
-        rospy.loginfo("[STATE 2] Driving first curve...")
-        self.controller.drive_curve(radius=0.1, velocity=0.4, angle_span=np.pi / 2)
+        self.controller.drive_curve(
+            radius=0.08, velocity=0.4, angle_span=0.9 * np.pi / 2
+        )
 
-        rospy.loginfo("[STATE 2] Moving forward 0.61 meters...")
-        self.controller.move_straight(target_distance=0.61, speed=0.3)
+        self.controller.move_straight(target_distance=1 * 0.61, speed=0.35)
 
-        rospy.loginfo("[STATE 2] Driving second curve...")
-        self.controller.drive_curve(radius=0.1, velocity=0.4, angle_span=np.pi / 2)
+        self.controller.drive_curve(
+            radius=0.08, velocity=0.4, angle_span=0.8 * np.pi / 2
+        )
 
-        rospy.loginfo("[STATE 2] Moving forward 0.92 meters...")
-        self.controller.move_straight(target_distance=0.92, speed=0.3)
+        self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
 
-        rospy.loginfo("[STATE 2] Rotating -90 degrees...")
-        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.3)
+        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.4)
 
         rospy.loginfo("[RUN] Composite motion sequence complete.")
 
