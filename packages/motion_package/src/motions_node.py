@@ -73,6 +73,7 @@ class Motions:
             "green": [0, 1, 0],
             "blue": [0, 0, 1],
             "red": [1, 0, 0],
+            "yellow": [1, 1, 0],
         }
 
     def callback_left(self, msg):
@@ -308,4 +309,10 @@ class Motions:
 
         self.stop_robot()
         rospy.sleep(1.0)
+        self.set_led_status("off")
+
+    def stop_and_hold(self, hold_time = 5, led_color="yellow"):
+        self.set_led_status(led_color)
+        self.stop_robot()
+        rospy.sleep(hold_time)
         self.set_led_status("off")

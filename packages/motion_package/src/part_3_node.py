@@ -20,31 +20,38 @@ class CompositeMotionNode(DTROS):
         self.controller = Motions(vehicle_name)
 
     def run(self):
+        # === State 1: Initial Stop ===
+        rospy.loginfo("State 1: Stopped at starting position.")
+        self.controller.stop_and_hold(hold_time=5, led_color="yellow")
+
         # Wait for encoder messages before starting any motion.
         self.controller.wait_for_encoders()
 
         self.controller.move_straight(target_distance=0.9 * 1.2, speed=0.35)
 
-        self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.375)
+        self.controller.rotate_robot(target_angle=-0.9 * (math.pi / 2), speed=0.345)
 
-        self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
-
-        self.controller.drive_curve(
-            radius=0.09, velocity=0.4, angle_span=0.9 * np.pi / 2
-        )
-
-        self.controller.move_straight(target_distance=0.9 * 0.61, speed=0.35)
+        self.controller.move_straight(target_distance=0.9 * 0.9, speed=0.35)
 
         self.controller.drive_curve(
             radius=0.09, velocity=0.4, angle_span=0.9 * np.pi / 2
         )
 
-        self.controller.move_straight(target_distance=0.9 * 0.92, speed=0.35)
+        self.controller.move_straight(target_distance=0.9 * 0.59, speed=0.35)
+
+        self.controller.drive_curve(
+            radius=0.092, velocity=0.4, angle_span=0.9 * np.pi / 2
+        )
+
+        self.controller.move_straight(target_distance=0.9 * 0.9, speed=0.35)
 
         self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.375)
 
         rospy.loginfo("Composite motion sequence complete.")
         # rospy.spin()
+
+        rospy.loginfo("State 3: Returning to the starting position.")
+        self.controller.stop_and_hold(hold_time=5, led_color="yellow")
 
     def on_shutdown(self):
         rospy.loginfo("Shutting down CompositeMotionNode, stopping robot.")
