@@ -73,7 +73,7 @@ class Motions:
         # PID controller for straight driving
         # Only use P value
         # The PID controller doen't work well with rotation and curve
-        self.pid_straight = PIDController(Kp=1.0, Ki=0.0, Kd=0.0)
+        self.pid_straight = PIDController(Kp=0.5, Ki=0, Kd=0.001)
 
         # Define a simple color dictionary.
         self.colors = {
@@ -81,7 +81,7 @@ class Motions:
             "green": [0, 1, 0],
             "blue": [0, 0, 1],
             "red": [1, 0, 0],
-            "yellow": [1, 1, 0],
+            "magenta": [1, 0, 1],
         }
 
     def callback_left(self, msg):
@@ -345,8 +345,8 @@ class Motions:
         # Turn off LED
         self.set_led_status("off")
 
-    def stop_and_hold(self, hold_time = 5, led_color="yellow"):
+    def stop_and_hold(self, hold_time=5, led_color="magenta"):
         self.set_led_status(led_color)
         self.stop_robot()
         rospy.sleep(hold_time)
-        self.set_led_status(led_color)
+        self.set_led_status("off")

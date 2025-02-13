@@ -10,7 +10,7 @@ def main():
     Reconstruct the path based on ticks
     Almost the opposite from how we calculate and send command to motors
     """
-    bag_file = "./packages/motion_package/src/d6.bag"
+    bag_file = "./packages/motion_package/src/D_good.bag"
     # bag_file = "./packages/motion_package/src/straight_good.bag"
     # bag_file = "./packages/motion_package/src/rotation_good.bag"
 
@@ -90,6 +90,7 @@ def main():
     plt.ylabel("y (m)")
     plt.title("Straight")
     # plt.title("Rotation")
+    plt.title("D-shape")
     plt.axis("equal")
     plt.grid(True)
     plt.show()
