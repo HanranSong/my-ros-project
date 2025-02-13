@@ -19,10 +19,10 @@ class CompositeMotionNode(DTROS):
         self.controller = Motions(vehicle_name)
 
     def run(self):
-        # Wait for encoder messages before starting any motion.
+        # Wait for encoder
         self.controller.wait_for_encoders()
 
-        rospy.loginfo("Driving curve...")
+        rospy.loginfo("Driving curve ...")
         self.controller.drive_curve(radius=0.1, velocity=0.4, angle_span=np.pi / 2)
 
         rospy.loginfo("Composite motion sequence complete.")
