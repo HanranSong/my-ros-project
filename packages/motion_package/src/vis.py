@@ -10,7 +10,8 @@ def main():
     Reconstruct the path based on ticks
     Almost the opposite from how we calculate and send command to motors
     """
-    bag_file = "./packages/motion_package/src/straight_good.bag"
+    bag_file = "./packages/motion_package/src/d5.bag"
+    # bag_file = "./packages/motion_package/src/straight_good.bag"
     # bag_file = "./packages/motion_package/src/rotation_good.bag"
 
     WHEEL_RADIUS = 0.0318  # meters
