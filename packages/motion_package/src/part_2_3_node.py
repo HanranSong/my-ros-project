@@ -17,13 +17,13 @@ class CompositeMotionNode(DTROS):
         self.controller = Motions(vehicle_name)
 
     def run(self):
-        # Wait for encoder messages before starting any motion.
+        # Wait for encoder
         self.controller.wait_for_encoders()
 
-        rospy.loginfo("Driving straight for 1.25 meter...")
+        rospy.loginfo("Driving straight ...")
         self.controller.move_straight(target_distance=1.25, speed=0.3)
 
-        rospy.loginfo("Driving straight for -1.25 meter (backward)...")
+        rospy.loginfo("Driving straight ...")
         self.controller.move_straight(target_distance=1.25, speed=-0.3)
 
         rospy.loginfo("Composite motion sequence complete.")

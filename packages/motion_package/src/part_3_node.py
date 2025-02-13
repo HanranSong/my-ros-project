@@ -20,7 +20,7 @@ class CompositeMotionNode(DTROS):
         self.controller = Motions(vehicle_name)
 
     def run(self):
-        # Wait for encoder messages before starting any motion.
+        # Wait for encoder
         self.controller.wait_for_encoders()
 
         self.controller.move_straight(target_distance=0.9 * 1.2, speed=0.35)
