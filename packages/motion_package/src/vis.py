@@ -8,7 +8,8 @@ import sys
 
 def main():
     # bag_file = "./packages/part_2/src/straight.bag"
-    bag_file = "./packages/part_2/src/rotation.bag"
+    # bag_file = "./packages/motion_package/src/rotation_good.bag"
+    bag_file = "2025-02-11-12-34-56.bag"
 
     # Differential drive parameters (same as your motion code)
     WHEEL_RADIUS = 0.0318  # meters
