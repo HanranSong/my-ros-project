@@ -349,4 +349,4 @@ class Motions:
         self.set_led_status(led_color)
         self.stop_robot()
         rospy.sleep(hold_time)
-        self.set_led_status("blue")
+        self.set_led_status(led_color)
