@@ -88,7 +88,7 @@ def main():
     plt.plot(xs, ys, marker="o", linestyle="-")
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
-    plt.title("Straight")
+    # plt.title("Straight")
     # plt.title("Rotation")
     plt.title("D-shape")
     plt.axis("equal")
