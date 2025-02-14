@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import os
+import math
 import rospy
 from duckietown.dtros import DTROS, NodeType
-from motions_pid_node import Motions
+from motions_node import Motions
 
 
 class CompositeMotionNode(DTROS):
@@ -17,14 +18,14 @@ class CompositeMotionNode(DTROS):
         self.controller = Motions(vehicle_name)
 
     def run(self):
-        # Wait for encoder messages before starting any motion.
+        # Wait for encoder
         self.controller.wait_for_encoders()
 
-        rospy.loginfo("Driving straight for 1.25 meter...")
-        self.controller.move_straight(target_distance=1.25, speed=0.3)
+        rospy.loginfo("Rotating ...")
+        self.controller.rotate_robot(target_angle=-math.pi / 2, speed=0.3)
 
-        rospy.loginfo("Driving straight for -1.25 meter (backward)...")
-        self.controller.move_straight(target_distance=1.25, speed=-0.3)
+        rospy.loginfo("Rotating ...")
+        self.controller.rotate_robot(target_angle=math.pi / 2, speed=0.175)
 
         rospy.loginfo("Composite motion sequence complete.")
         # rospy.spin()
